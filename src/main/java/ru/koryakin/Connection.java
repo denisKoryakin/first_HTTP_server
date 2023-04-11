@@ -28,6 +28,7 @@ class Connection extends Thread {
 
             //  парсим новый запрос
             Request request = new Request(buffer);
+            System.out.println(request.getPostParam("title"));
 
             //  ищем имеющийся Хэндлер по методу и пути и отдаем обработчику запрос на обработку
             if (handlersList.containsKey(request.getMethod())) {

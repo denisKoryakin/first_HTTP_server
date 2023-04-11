@@ -4,10 +4,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import org.apache.http.*;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -21,7 +19,7 @@ public class Request {
     private final String protocolVersion;
     private final List<String> headers;
     private final String body;
-    List<NameValuePair> queryParams;
+    private final List<NameValuePair> queryParams;
     private final byte[] requestLineDelimiter = new byte[]{'\r', '\n'};
     private final byte[] headersDelimiter = new byte[]{'\r', '\n', '\r', '\n'};
     boolean badRequest = false;
@@ -29,12 +27,14 @@ public class Request {
     private final int headersStart;
     private final int headersEnd;
     final List<String> allowedMethods = List.of("GET", "POST");
+    private final String contentType;
+    private final List<NameValuePair> postParams;
 
     Request(byte[] buffer) throws IOException, URISyntaxException {
         this.buffer = buffer;
         int read = buffer.length;
         this.requestLineEnd = indexOf(buffer, requestLineDelimiter, 0, read);
-        this.headersStart = (int)(requestLineEnd + requestLineDelimiter.length);
+        this.headersStart = (int) (requestLineEnd + requestLineDelimiter.length);
         this.headersEnd = indexOf(buffer, headersDelimiter, headersStart, read);
         this.requestLine = requestLineParse();
         this.method = Objects.requireNonNull(requestLineParse())[0];
@@ -49,6 +49,12 @@ public class Request {
         this.protocolVersion = Objects.requireNonNull(requestLineParse())[2];
         this.headers = headersParse();
         this.body = bodyParse();
+        if (extractHeader(headers, "Content-Type:").isPresent()) {
+            this.contentType = extractHeader(headers, "Content-Type:").get();
+        } else {
+            this.contentType = "application/x-www-form-urlencoded";
+        }
+        this.postParams = getPostParams();
     }
 
     public String getMethod() {
@@ -129,25 +135,55 @@ public class Request {
         return body;
     }
 
-    public String getQueryParam(String name) {
-        if(queryParams.isEmpty()) return null;
-        for (NameValuePair param : queryParams){
-            if (name.equals(param.getName())){
-                System.out.println("Query for " + name + " : "  + param.getValue());
-                return param.getValue();
+    public List<NameValuePair> getQueryParam(String name) {
+        if (queryParams.isEmpty()) return null;
+        List<NameValuePair> returnedList = null;
+        for (NameValuePair param : queryParams) {
+            if (name.equals(param.getName())) {
+                System.out.println("Query for " + name + " : " + param.getValue());
+                returnedList.add(param);
             }
         }
-        System.out.println("Query not found");
-        return null;
+        if (returnedList.isEmpty()) {
+            System.out.println("Query not found");
+        }
+        return returnedList;
     }
 
     public List<NameValuePair> getQueryParams() {
-        for (NameValuePair param : queryParams){
+        for (NameValuePair param : queryParams) {
             System.out.println("Query name: " +
                     param.getName() + ", query param: " +
                     param.getValue());
         }
         return queryParams;
+    }
+
+    public List<NameValuePair> getPostParam(String name) {
+        if (postParams.isEmpty()) return null;
+        List<NameValuePair> returnedList = null;
+        for (NameValuePair param : postParams) {
+            if (name.equals(param.getName())) {
+                System.out.println("POST param for " + name + " : " + param.getValue());
+                returnedList.add(param);
+            }
+        }
+        if (returnedList.isEmpty()) {
+            System.out.println("POST param not found");
+        }
+        return returnedList;
+    }
+
+    public List<NameValuePair> getPostParams() {
+        List<NameValuePair> rawPostParams;
+        if (contentType.equals("application/x-www-form-urlencoded")) {
+            rawPostParams = URLEncodedUtils.parse(body, Charset.defaultCharset());
+            for (NameValuePair param : rawPostParams) {
+                System.out.println(param.getName() + ": " + param.getValue());
+            }
+            return rawPostParams;
+        }
+        return null;
     }
 
     private static Optional<String> extractHeader(List<String> headers, String header) {
