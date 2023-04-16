@@ -9,8 +9,8 @@ public class Main {
     final var server = new Server();
 
     // добавление хендлеров (обработчиков)
-    server.addHandler("GET", "/messages", ((request, out) -> sendResponse("Hello from GET /message", out))); /*функц. интерфейс Handler реализован лямбдой*/
-    server.addHandler("POST", "/messages", ((request, out) -> sendResponse("Hello from POST /message", out)));
+//    server.addHandler("GET", "/messages", ((request, out) -> sendResponse("Hello from GET /message", out))); /*функц. интерфейс Handler реализован лямбдой*/
+//    server.addHandler("POST", "/messages", ((request, out) -> sendResponse("Hello from POST /message", out)));
 
     server.listen(8080);
   }
